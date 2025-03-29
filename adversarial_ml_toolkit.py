@@ -14,6 +14,15 @@ class AdversarialMLToolkit:
     """
     
     def __init__(self):
+        """
+            <summary>
+            Inicializa el toolkit de machine learning adversarial.
+            </summary>
+            
+            <remarks>
+            Configura automáticamente el dispositivo (GPU/CPU) y prepara el entorno para los ataques.
+            </remarks>
+        """
         # Configuración del dispositivo (GPU si está disponible, CPU en caso contrario)
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         
@@ -26,7 +35,22 @@ class AdversarialMLToolkit:
         print(f"AdversarialMLToolkit inicializado en: {self.device}")
     
     def load_simple_model(self):
-        """Carga un modelo CNN simple para clasificación de imágenes MNIST"""
+        """
+        <summary>
+        Carga un modelo CNN simple para clasificación de imágenes MNIST.
+        </summary>
+        
+        <returns>
+        None
+        </returns>
+        
+        <example>
+        <code>
+        toolkit = AdversarialMLToolkitEnhanced()
+        toolkit.load_simple_model()
+        </code>
+        </example>
+        """
         class SimpleNet(nn.Module):
             def __init__(self):
                 super(SimpleNet, self).__init__()
@@ -144,8 +168,20 @@ class AdversarialMLToolkit:
     
     def fgsm_attack(self, image, epsilon, target, criterion):
         """
+        <summary>
         Implementación del Fast Gradient Sign Method (FGSM)
+        </summary>
         
+        <param name="image">La imagen de entrada a perturbar</param>
+        <param name="epsilon">La magnitud de la perturbación</param>
+        <param name="target">La etiqueta objetivo</param>
+        <param name="criterion">La función de pérdida a utilizar</param>
+        
+        <returns>
+        torch.Tensor: La imagen perturbada
+        </returns>
+        
+        <remarks>
         Fórmula: x' = x + ε⋅sign(∇x J(θ,x,y))
         
         Donde:
@@ -154,6 +190,7 @@ class AdversarialMLToolkit:
         - ε es la magnitud de la perturbación
         - J(θ,x,y) es la función de pérdida
         - ∇x es el gradiente con respecto a x
+        </remarks>
         """
         image.requires_grad = True
         
@@ -174,14 +211,29 @@ class AdversarialMLToolkit:
     
     def pgd_attack(self, image, epsilon, alpha, iterations, target, criterion):
         """
+        <summary>
         Implementación del Projected Gradient Descent (PGD)
+        </summary>
         
+        <param name="image">La imagen de entrada a perturbar</param>
+        <param name="epsilon">La magnitud máxima de la perturbación</param>
+        <param name="alpha">El tamaño del paso en cada iteración</param>
+        <param name="iterations">El número de iteraciones</param>
+        <param name="target">La etiqueta objetivo</param>
+        <param name="criterion">La función de pérdida a utilizar</param>
+        
+        <returns>
+        torch.Tensor: La imagen perturbada
+        </returns>
+        
+        <remarks>
         Fórmula: x^(t+1) = Π_(x+S)(x^t + α⋅sign(∇x J(θ,x^t,y)))
         
         Donde:
         - x^t es la imagen en la iteración t
         - Π_(x+S) es la proyección al espacio de perturbaciones válidas
         - α es el tamaño del paso
+        </remarks>
         """
         perturbed_image = image.clone().detach()
         
@@ -310,9 +362,32 @@ class AdversarialMLToolkit:
     
     def demonstrate_adversarial_training(self, epsilon=0.1, epochs=3):
         """
-        Demuestra el entrenamiento adversarial (defensa)
+        <summary>
+        Demuestra el entrenamiento adversarial como método de defensa
+        </summary>
         
+        <param name="epsilon">La magnitud de la perturbación para los ejemplos adversariales</param>
+        <param name="epochs">El número de épocas de entrenamiento</param>
+        
+        <returns>
+        None
+        </returns>
+        
+        <remarks>
         Fórmula: min_θ E_(x,y)~D [max_δ∈S L(θ, x+δ, y)]
+        
+        Esta implementación utiliza tanto ejemplos originales como adversariales
+        durante el entrenamiento para mejorar la robustez del modelo.
+        </remarks>
+        
+        <example>
+        <code>
+        toolkit = AdversarialMLToolkitEnhanced()
+        toolkit.load_simple_model()
+        toolkit.load_mnist_dataset()
+        toolkit.demonstrate_adversarial_training(epsilon=0.1, epochs=3)
+        </code>
+        </example>
         """
         if self.model is None or self.train_loader is None:
             print("Error: Primero debe cargar un modelo y un conjunto de datos.")
@@ -397,6 +472,14 @@ class AdversarialMLToolkit:
         # Evaluar robustez adversarial final
         print("Evaluación de robustez adversarial después del entrenamiento:")
         final_adv_accuracy = eval_adv_robustness(epsilon)
+        
+        # Mostrar resultados
+        print("\nResumen de resultados:")
+        print(f"Precisión estándar antes:  {regular_accuracy:.2f}%")
+        print(f"Precisión estándar después: {robust_accuracy:.2f}%")
+        print(f"Robustez adversarial antes:  {initial_adv_accuracy:.2f}%")
+        print(f"Robustez adversarial después: {final_adv_accuracy:.2f}%")
+        print(f"Mejora en robustez: {final_adv_accuracy - initial_adv_accuracy:.2f}%")
         
         # Mostrar comparación
         labels = ['Precisión estándar', 'Robustez adversarial']

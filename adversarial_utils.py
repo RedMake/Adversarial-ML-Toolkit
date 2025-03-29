@@ -126,25 +126,32 @@ class AdversarialUtils:
     @staticmethod
     def carlini_wagner_l2(model, x, y, targeted=False, max_iter=100, confidence=0, learning_rate=0.01, initial_const=0.01, max_const=10):
         """
-        Implementa el ataque C&W L2.
+        <summary>
+        Implementa el ataque Carlini & Wagner L2.
+        </summary>
         
+        <param name="model">El modelo a atacar</param>
+        <param name="x">Las imágenes de entrada</param>
+        <param name="y">Las etiquetas objetivo o verdaderas</param>
+        <param name="targeted">Si True, intenta causar una clasificación específica; si False, cualquier error</param>
+        <param name="max_iter">Número máximo de iteraciones</param>
+        <param name="confidence">Parámetro de confianza para el margen</param>
+        <param name="learning_rate">Tasa de aprendizaje para la optimización</param>
+        <param name="initial_const">Constante inicial para el balance</param>
+        
+        <returns>
+        torch.Tensor: Las imágenes perturbadas
+        </returns>
+        
+        <remarks>
         Fórmula: min_δ ||δ||_2 + c⋅f(x+δ)
         
-        Esta es una versión simplificada del ataque C&W que no incluye la optimización completa.
-        
-        Argumentos:
-            model: El modelo a atacar
-            x: Las imágenes de entrada
-            y: Las etiquetas objetivo
-            targeted: Si True, intenta causar una clasificación específica; si False, cualquier error
-            max_iter: Número máximo de iteraciones
-            confidence: Parámetro de confianza para el margen
-            learning_rate: Tasa de aprendizaje para la optimización
-            initial_const: Constante inicial para el balance
-            max_const: Constante máxima para la búsqueda binaria
-            
-        Retorna:
-            Las imágenes perturbadas
+        Donde:
+        - δ es la perturbación
+        - ||δ||_2 es la norma L2 de la perturbación
+        - c es un parámetro de balance
+        - f(x+δ) es una función que mide cuán efectivo es el ataque
+        </remarks>
         """
         # Número de clases (asumiendo la última capa lineal con num_classes salidas)
         num_classes = model(x).shape[1]
@@ -489,14 +496,28 @@ class AdversarialUtils:
     @staticmethod
     def feature_squeezing(x, bit_depth=5):
         """
+        <summary>
         Implementa la defensa de feature squeezing reduciendo la profundidad de bits.
+        </summary>
         
-        Argumentos:
-            x: La imagen de entrada (tensor)
-            bit_depth: La profundidad de bits a la que reducir
-            
-        Retorna:
-            La imagen con profundidad de bits reducida
+        <param name="x">La imagen de entrada (tensor)</param>
+        <param name="bit_depth">La profundidad de bits a la que reducir</param>
+        
+        <returns>
+        torch.Tensor: La imagen con profundidad de bits reducida
+        </returns>
+        
+        <remarks>
+        Esta técnica reduce la sensibilidad del modelo a pequeñas perturbaciones
+        al disminuir la precisión de los valores de los píxeles.
+        </remarks>
+        
+        <example>
+        <code>
+        # Reducir una imagen a 3 bits por canal
+        squeezed_image = feature_squeezing(original_image, bit_depth=3)
+        </code>
+        </example>
         """
         max_val = 2**bit_depth - 1
         x_int = torch.round(x * max_val)

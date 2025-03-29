@@ -24,10 +24,14 @@ import torchvision.transforms as transforms
 np.random.seed(0)
 torch.manual_seed(0)
 
-# Verificar si hay GPU disponible
+# Verificar si hay GPU disponible con CUDA Instalado
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(f"Usando dispositivo: {device}")
-
+if torch.cuda.is_available():
+    print("GPU disponible. Usando GPU para entrenamiento.")
+        
+else:
+    print("GPU no disponible. Usando CPU para entrenamiento.")
 # %% [markdown]
 # ## 2. Definición Matemática de Ataques Adversariales
 # 

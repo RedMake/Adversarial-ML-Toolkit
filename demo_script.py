@@ -48,9 +48,17 @@ def main():
     print("=" * 80)
     
     # Verificar disponibilidad de GPU
+    # Se asume que si hay GPU, se usará la primera GPU disponible que tenga CUDA, 
+    # de lo contrario se usará la CPU. Para instalar CUDA, ver: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/
+
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Dispositivo: {device}")
-    
+    if torch.cuda.is_available():
+        print("GPU disponible. Usando GPU para entrenamiento.")
+        
+    else:
+        print("GPU no disponible. Usando CPU para entrenamiento.")
+        
     # Crear directorio para resultados si es necesario
     if args.guardar:
         os.makedirs("resultados", exist_ok=True)
