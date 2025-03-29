@@ -58,6 +58,9 @@ Con menu:
 ```
 python run_project.py
 ```
+
+Explicacion completa de los --mode y lo que hace en [Guia de demostración](https://github.com/RedMake/Adversarial-ML-Toolkit/blob/master/Guia-Demostraciones.md)
+
 Sin menu:
 ```
 python demo_script.py --mode [basico|avanzado|completo] --epsilon 0.1 --modelo cnn --defensa
