@@ -1,0 +1,6 @@
+# Carpetas generadas automáticamente
+data/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
