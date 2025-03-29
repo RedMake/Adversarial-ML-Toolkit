@@ -6,6 +6,7 @@ Script para instalar dependencias para el proyecto de Adversarial ML.
 - Detecta si ya existe un entorno virtual activo y ofrece usarlo
 - Instala dependencias solo si no están ya instaladas
 - Proporciona instrucciones para activar el entorno si lo desea o no
+- Ofrece la opción de instalar PyTorch con soporte CUDA
 """
 
 import importlib
@@ -73,9 +74,83 @@ def install_package(package_name, python_exe=None):
     subprocess.check_call([python_exe, "-m", "pip", "install", package_name])
     print(f"✅ Instalado: {package_name}")
 
-def check_and_install(packages, python_exe=None):
+def check_cuda_availability():
+    """Verificar disponibilidad de CUDA."""
+    try:
+        import torch
+        return torch.cuda.is_available()
+    except ImportError:
+        # Si torch no está instalado, no podemos verificar CUDA todavía
+        return False
+
+def check_existing_pytorch():
+    """Verificar si ya hay una versión de PyTorch instalada y si tiene CUDA."""
+    try:
+        import torch
+        has_pytorch = True
+        has_cuda = torch.cuda.is_available()
+        version = torch.__version__
+        return has_pytorch, has_cuda, version
+    except ImportError:
+        return False, False, None
+
+def uninstall_pytorch(python_exe=None):
+    """Desinstalar PyTorch para evitar conflictos."""
+    if python_exe is None:
+        python_exe = get_python_executable()
+    
+    packages = ["torch", "torchvision", "torchaudio"]
+    
+    print("⏳ Desinstalando versiones anteriores de PyTorch...")
+    try:
+        for package in packages:
+            subprocess.check_call([python_exe, "-m", "pip", "uninstall", "-y", package])
+        print("✅ Versiones anteriores de PyTorch desinstaladas correctamente.")
+        return True
+    except subprocess.CalledProcessError:
+        print("⚠️  No se pudieron desinstalar todas las versiones anteriores.")
+        return False
+
+def install_pytorch_with_cuda(python_exe=None):
+    """Instalar PyTorch con soporte para CUDA."""
+    if python_exe is None:
+        python_exe = get_python_executable()
+    
+    # Comando para instalar PyTorch con CUDA 11.8
+    cuda_install_cmd = "torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118"
+    
+    print("⏳ Instalando PyTorch con soporte para CUDA 11.8...")
+    try:
+        subprocess.check_call([python_exe, "-m", "pip", "install", *cuda_install_cmd.split()])
+        print("✅ PyTorch con soporte CUDA instalado correctamente.")
+        return True
+    except subprocess.CalledProcessError:
+        print("❌ Error al instalar PyTorch con CUDA. Intentando con la versión estándar...")
+        return False
+
+def install_pytorch_standard(python_exe=None):
+    """Instalar PyTorch sin soporte para CUDA específico."""
+    if python_exe is None:
+        python_exe = get_python_executable()
+    
+    packages = ["torch", "torchvision", "torchaudio"]
+    
+    print("⏳ Instalando PyTorch versión estándar...")
+    try:
+        subprocess.check_call([python_exe, "-m", "pip", "install", *packages])
+        print("✅ PyTorch instalado correctamente.")
+        return True
+    except subprocess.CalledProcessError:
+        print("❌ Error al instalar PyTorch.")
+        return False
+
+def check_and_install(packages, python_exe=None, skip_pytorch=False):
     """Comprobar e instalar paquetes si no están presentes."""
     for package in packages:
+        # Saltarse PyTorch si se manejará por separado
+        if skip_pytorch and package in ["torch", "torchvision", "torchaudio"]:
+            continue
+            
         if is_package_installed(package, python_exe):
             print(f"✓ Ya instalado: {package}")
         else:
@@ -171,10 +246,61 @@ def main():
     print("Verificando e instalando dependencias")
     print("="*70)
     
-    # Lista de dependencias requeridas
-    required_packages = [
-        "torch",
-        "torchvision",
+    # Verificar la instalación existente de PyTorch
+    has_pytorch, has_cuda, version = check_existing_pytorch()
+    if has_pytorch:
+        print(f"\n🔍 Detectada instalación existente de PyTorch versión {version}")
+        print(f"   Soporte CUDA: {'✅ Disponible' if has_cuda else '❌ No disponible'}")
+        
+        # Preguntar qué hacer con la instalación existente
+        print("\nOpciones disponibles:")
+        print("1. Mantener la instalación actual de PyTorch")
+        print("2. Reinstalar PyTorch" + (" con soporte CUDA" if has_cuda else ""))
+        print("3. Reinstalar PyTorch sin soporte específico para CUDA")
+        print("4. Desinstalar PyTorch completamente")
+        
+        while True:
+            choice = input("\nSelecciona una opción (1-4): ")
+            
+            if choice == "1":
+                print("Manteniendo la instalación existente de PyTorch.")
+                pytorch_installed = True
+                cuda_option = has_cuda  # Mantener estado actual
+                break
+            elif choice == "2":
+                if has_cuda:
+                    print("Reinstalando PyTorch con soporte CUDA...")
+                else:
+                    print("Instalando PyTorch con soporte CUDA...")
+                uninstall_pytorch(python_executable)
+                cuda_option = True
+                break
+            elif choice == "3":
+                print("Reinstalando PyTorch sin soporte específico para CUDA...")
+                uninstall_pytorch(python_executable)
+                cuda_option = False
+                break
+            elif choice == "4":
+                print("Desinstalando PyTorch completamente...")
+                uninstall_pytorch(python_executable)
+                pytorch_installed = False
+                cuda_option = False
+                if ask_yes_no("¿Deseas continuar con la instalación de las demás dependencias?"):
+                    break
+                else:
+                    print("Operación cancelada.")
+                    return
+            else:
+                print("Opción no válida. Por favor, selecciona una opción del 1 al 4.")
+    else:
+        print("\nNo se detectó una instalación existente de PyTorch.")
+        cuda_option = ask_yes_no("¿Deseas instalar PyTorch con soporte para CUDA? (recomendado si tienes una GPU NVIDIA)")
+        if not cuda_option:
+            print("Se instalará PyTorch sin soporte específico para CUDA.")
+    
+    # Lista de dependencias requeridas, separando PyTorch del resto
+    pytorch_packages = ["torch", "torchvision", "torchaudio"]
+    other_packages = [
         "numpy",
         "matplotlib", 
         "scikit-learn",
@@ -182,15 +308,53 @@ def main():
         "pillow"
     ]
     
-    # Verificar e instalar las dependencias
-    check_and_install(required_packages, python_executable)
+    # Solo instalar PyTorch si es necesario
+    if not has_pytorch or (has_pytorch and not pytorch_installed):
+        # Instalar según la preferencia de CUDA
+        if cuda_option:
+            # Instalar PyTorch con CUDA
+            pytorch_installed = install_pytorch_with_cuda(python_executable)
+            if not pytorch_installed:
+                # Si falla, intentar con la versión estándar
+                pytorch_installed = install_pytorch_standard(python_executable)
+        else:
+            # Instalar PyTorch sin soporte específico para CUDA
+            pytorch_installed = install_pytorch_standard(python_executable)
+    else:
+        pytorch_installed = True  # Ya está instalado y decidimos mantenerlo
+    
+    # Verificar el estado actual de PyTorch
+    print("\nVerificando la instalación de PyTorch...")
+    try:
+        # Importar torch desde el intérprete instalado para verificar CUDA
+        result = subprocess.run(
+            [python_executable, "-c", "import torch; print(f'Versión PyTorch: {torch.__version__}'); print(f'CUDA disponible: {torch.cuda.is_available()}'); print(f'Versión CUDA (si disponible): {torch.version.cuda if torch.cuda.is_available() else \"N/A\"}')"],
+            capture_output=True,
+            text=True
+        )
+        print(result.stdout.strip())
+        
+        # Verificar si hay problemas de compatibilidad
+        if "cuda" in result.stdout.lower() and "disponible: false" in result.stdout.lower():
+            print("\n⚠️ ADVERTENCIA: PyTorch está instalado con soporte CUDA, pero CUDA no está disponible.")
+            print("   Posibles causas:")
+            print("   - Drivers NVIDIA no instalados o desactualizados")
+            print("   - Versión de CUDA incompatible con tu hardware")
+            print("   - Problemas con la instalación de PyTorch")
+            print("\n   Sugerencia: Verifica la instalación de los drivers NVIDIA y asegúrate")
+            print("   de que son compatibles con CUDA 11.8")
+    except:
+        print("No se pudo verificar la instalación de PyTorch correctamente.")
+    
+    # Verificar e instalar las demás dependencias
+    check_and_install(other_packages, python_executable)
     
     # Verificar que todo se instaló correctamente
     all_installed = True
-    for pkg in required_packages:
+    for pkg in pytorch_packages + other_packages:
         if not is_package_installed(pkg, python_executable):
             all_installed = False
-            break
+            print(f"❌ {pkg} no está instalado correctamente.")
     
     if all_installed:
         print("\n✅ Todas las dependencias están instaladas correctamente.")
@@ -209,7 +373,12 @@ def main():
     else:
         print("\n❌ Hubo problemas al instalar algunas dependencias.")
         print("   Intenta instalarlas manualmente utilizando:")
-        print("   pip install -r requirements.txt")
+        if cuda_option:
+            print("   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118")
+            print("   pip install numpy matplotlib scikit-learn tqdm pillow")
+        else:
+            print("   pip install torch torchvision torchaudio")
+            print("   pip install numpy matplotlib scikit-learn tqdm pillow")
 
 if __name__ == "__main__":
     main()
