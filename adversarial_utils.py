@@ -14,20 +14,44 @@ class AdversarialUtils:
     @staticmethod
     def fgsm_attack(model, x, y, epsilon, loss_fn, targeted=False):
         """
+        <summary>
         Implementa el ataque Fast Gradient Sign Method (FGSM).
+        </summary>
         
+        <param name="model">El modelo a atacar</param>
+        <param name="x">Las imágenes de entrada</param>
+        <param name="y">Las etiquetas objetivo</param>
+        <param name="epsilon">La magnitud de la perturbación</param>
+        <param name="loss_fn">La función de pérdida</param>
+        <param name="targeted">Si True, intenta causar una clasificación específica; si False, cualquier error</param>
+        
+        <returns>
+        torch.Tensor: Las imágenes perturbadas
+        </returns>
+        
+        <remarks>
         Fórmula: x' = x + ε⋅sign(∇x J(θ,x,y))
         
-        Argumentos:
-            model: El modelo a atacar
-            x: Las imágenes de entrada
-            y: Las etiquetas objetivo
-            epsilon: La magnitud de la perturbación
-            loss_fn: La función de pérdida
-            targeted: Si True, intenta causar una clasificación específica; si False, cualquier error
+        Donde:
+        - x' es la imagen perturbada
+        - x es la imagen original
+        - ε es la magnitud de la perturbación
+        - J(θ,x,y) es la función de pérdida
+        - ∇x es el gradiente con respecto a x
+        </remarks>
         
-        Retorna:
-            Las imágenes perturbadas
+        <example>
+        <code>
+        # Generar un ejemplo adversarial usando FGSM
+        perturbed_image = AdversarialUtils.fgsm_attack(
+            model=my_model,
+            x=original_image,
+            y=true_label,
+            epsilon=0.1,
+            loss_fn=nn.CrossEntropyLoss()
+        )
+        </code>
+        </example>
         """
         # Creamos una copia del tensor y aseguramos que requiera gradiente
         x_clone = x.detach().clone()
@@ -64,23 +88,50 @@ class AdversarialUtils:
     @staticmethod
     def pgd_attack(model, x, y, epsilon, alpha, num_iter, loss_fn, targeted=False, random_start=True):
         """
+        <summary>
         Implementa el ataque Projected Gradient Descent (PGD).
+        </summary>
         
+        <param name="model">El modelo a atacar</param>
+        <param name="x">Las imágenes de entrada</param>
+        <param name="y">Las etiquetas objetivo</param>
+        <param name="epsilon">El límite máximo de la perturbación</param>
+        <param name="alpha">El tamaño del paso</param>
+        <param name="num_iter">El número de iteraciones</param>
+        <param name="loss_fn">La función de pérdida</param>
+        <param name="targeted">Si True, intenta causar una clasificación específica; si False, cualquier error</param>
+        <param name="random_start">Si True, agrega una perturbación aleatoria inicial</param>
+        
+        <returns>
+        torch.Tensor: Las imágenes perturbadas
+        </returns>
+        
+        <remarks>
         Fórmula: x^(t+1) = Π_(x+S)(x^t + α⋅sign(∇x J(θ,x^t,y)))
         
-        Argumentos:
-            model: El modelo a atacar
-            x: Las imágenes de entrada
-            y: Las etiquetas objetivo
-            epsilon: El límite máximo de la perturbación
-            alpha: El tamaño del paso
-            num_iter: El número de iteraciones
-            loss_fn: La función de pérdida
-            targeted: Si True, intenta causar una clasificación específica; si False, cualquier error
-            random_start: Si True, agrega una perturbación aleatoria inicial
-            
-        Retorna:
-            Las imágenes perturbadas
+        Donde:
+        - x^t es la imagen en la iteración t
+        - Π_(x+S) es la proyección al espacio de perturbaciones válidas
+        - α es el tamaño del paso
+        
+        PGD es un ataque iterativo que genera perturbaciones más fuertes que FGSM,
+        ya que realiza múltiples pasos en la dirección del gradiente.
+        </remarks>
+        
+        <example>
+        <code>
+        # Generar un ejemplo adversarial usando PGD
+        perturbed_image = AdversarialUtils.pgd_attack(
+            model=my_model,
+            x=original_image,
+            y=true_label,
+            epsilon=0.1,
+            alpha=0.01,
+            num_iter=40,
+            loss_fn=nn.CrossEntropyLoss()
+        )
+        </code>
+        </example>
         """
         # Crear una copia para no modificar el original
         perturbed_x = x.clone().detach()
@@ -217,17 +268,48 @@ class AdversarialUtils:
     @staticmethod
     def evaluate_model_robustness(model, data_loader, attack_fn, device, **attack_params):
         """
+        <summary>
         Evalúa la robustez de un modelo frente a un ataque adversarial.
+        </summary>
         
-        Argumentos:
-            model: El modelo a evaluar
-            data_loader: El cargador de datos para evaluación
-            attack_fn: La función de ataque a utilizar
-            device: El dispositivo donde realizar la evaluación
-            attack_params: Parámetros adicionales para la función de ataque
-            
-        Retorna:
-            Un diccionario con las métricas de robustez
+        <param name="model">El modelo a evaluar</param>
+        <param name="data_loader">El cargador de datos para evaluación</param>
+        <param name="attack_fn">La función de ataque a utilizar</param>
+        <param name="device">El dispositivo donde realizar la evaluación</param>
+        <param name="attack_params">Parámetros adicionales para la función de ataque</param>
+        
+        <returns>
+        dict: Un diccionario con las métricas de robustez 
+              {
+                'clean_accuracy': float, 
+                'adversarial_accuracy': float, 
+                'attack_success_rate': float, 
+                'total_samples': int
+              }
+        </returns>
+        
+        <remarks>
+        Esta función evalúa la precisión del modelo tanto en datos limpios como en 
+        datos perturbados por el ataque especificado. La tasa de éxito del ataque 
+        se calcula como la diferencia entre la precisión limpia y la adversarial.
+        </remarks>
+        
+        <example>
+        <code>
+        # Evaluar la robustez del modelo contra FGSM con epsilon=0.1
+        robustness_metrics = AdversarialUtils.evaluate_model_robustness(
+            model=my_model,
+            data_loader=test_loader,
+            attack_fn=AdversarialUtils.fgsm_attack,
+            device=device,
+            epsilon=0.1
+        )
+        
+        print(f"Precisión en datos limpios: {robustness_metrics['clean_accuracy']:.2f}%")
+        print(f"Precisión en datos adversariales: {robustness_metrics['adversarial_accuracy']:.2f}%")
+        print(f"Tasa de éxito del ataque: {robustness_metrics['attack_success_rate']:.2f}%")
+        </code>
+        </example>
         """
         model.eval()
         
@@ -268,18 +350,40 @@ class AdversarialUtils:
     @staticmethod
     def visualize_adversarial_examples(model, data, target, attack_fn, device, **attack_params):
         """
+        <summary>
         Visualiza ejemplos adversariales y las predicciones del modelo.
+        </summary>
         
-        Argumentos:
-            model: El modelo a evaluar
-            data: Los datos de entrada
-            target: Las etiquetas verdaderas
-            attack_fn: La función de ataque a utilizar
-            device: El dispositivo donde realizar la evaluación
-            attack_params: Parámetros adicionales para la función de ataque
-            
-        Retorna:
-            None (muestra un gráfico)
+        <param name="model">El modelo a evaluar</param>
+        <param name="data">Los datos de entrada</param>
+        <param name="target">Las etiquetas verdaderas</param>
+        <param name="attack_fn">La función de ataque a utilizar</param>
+        <param name="device">El dispositivo donde realizar la evaluación</param>
+        <param name="attack_params">Parámetros adicionales para la función de ataque</param>
+        
+        <returns>
+        None (muestra un gráfico)
+        </returns>
+        
+        <remarks>
+        Esta función genera visualizaciones de los datos originales, perturbados y
+        la magnitud de la perturbación para cada ejemplo en el lote de datos proporcionado.
+        Muestra también las predicciones del modelo para cada caso.
+        </remarks>
+        
+        <example>
+        <code>
+        # Visualizar ejemplos adversariales FGSM
+        AdversarialUtils.visualize_adversarial_examples(
+            model=my_model,
+            data=test_images[:5],  # Primeras 5 imágenes de prueba
+            target=test_labels[:5],
+            attack_fn=AdversarialUtils.fgsm_attack,
+            device=device,
+            epsilon=0.1
+        )
+        </code>
+        </example>
         """
         model.eval()
         
@@ -344,24 +448,64 @@ class AdversarialUtils:
     def adversarial_training(model, train_loader, optimizer, loss_fn, device, attack_fn, epochs=1, 
                             alpha=0.5, eval_loader=None, **attack_params):
         """
+        <summary>
         Realiza entrenamiento adversarial para mejorar la robustez del modelo.
+        </summary>
         
+        <param name="model">El modelo a entrenar</param>
+        <param name="train_loader">El cargador de datos de entrenamiento</param>
+        <param name="optimizer">El optimizador</param>
+        <param name="loss_fn">La función de pérdida</param>
+        <param name="device">El dispositivo donde realizar el entrenamiento</param>
+        <param name="attack_fn">La función de ataque a utilizar</param>
+        <param name="epochs">Número de épocas</param>
+        <param name="alpha">Peso para la pérdida adversarial (0.5 significa 50% normal, 50% adversarial)</param>
+        <param name="eval_loader">Cargador de datos para evaluación (opcional)</param>
+        <param name="attack_params">Parámetros adicionales para la función de ataque</param>
+        
+        <returns>
+        dict: Historial de entrenamiento 
+              {
+                'train_loss': List[float], 
+                'clean_accuracy': List[float], 
+                'adversarial_accuracy': List[float]
+              }
+        </returns>
+        
+        <remarks>
         Fórmula: min_θ E_(x,y)~D [max_δ∈S L(θ, x+δ, y)]
         
-        Argumentos:
-            model: El modelo a entrenar
-            train_loader: El cargador de datos de entrenamiento
-            optimizer: El optimizador
-            loss_fn: La función de pérdida
-            device: El dispositivo donde realizar el entrenamiento
-            attack_fn: La función de ataque a utilizar
-            epochs: Número de épocas
-            alpha: Peso para la pérdida adversarial (0.5 significa 50% normal, 50% adversarial)
-            eval_loader: Cargador de datos para evaluación (opcional)
-            attack_params: Parámetros adicionales para la función de ataque
-            
-        Retorna:
-            Historial de entrenamiento
+        Donde:
+        - θ son los parámetros del modelo
+        - D es la distribución de datos
+        - S es el conjunto de perturbaciones permitidas
+        - L es la función de pérdida
+        
+        El entrenamiento adversarial mejora la robustez incluyendo ejemplos adversariales
+        durante el entrenamiento, con un peso α que balancea entre la pérdida de ejemplos
+        limpios y ejemplos adversariales.
+        </remarks>
+        
+        <example>
+        <code>
+        # Entrenar un modelo con ejemplos adversariales generados con FGSM
+        history = AdversarialUtils.adversarial_training(
+            model=my_model,
+            train_loader=train_loader,
+            optimizer=optimizer,
+            loss_fn=nn.CrossEntropyLoss(),
+            device=device,
+            attack_fn=AdversarialUtils.fgsm_attack,
+            epochs=10,
+            alpha=0.5,  # 50% pérdida normal, 50% pérdida adversarial
+            eval_loader=test_loader,
+            epsilon=0.1
+        )
+        
+        # Graficar historial de entrenamiento
+        AdversarialUtils.plot_training_history(history)
+        </code>
+        </example>
         """
         history = {
             'train_loss': [],
@@ -460,13 +604,27 @@ class AdversarialUtils:
     @staticmethod
     def plot_training_history(history):
         """
+        <summary>
         Grafica el historial de entrenamiento adversarial.
+        </summary>
         
-        Argumentos:
-            history: Historial de entrenamiento obtenido de adversarial_training
-            
-        Retorna:
-            None (muestra un gráfico)
+        <param name="history">Historial de entrenamiento obtenido de adversarial_training</param>
+        
+        <returns>
+        None (muestra un gráfico)
+        </returns>
+        
+        <remarks>
+        Esta función crea dos gráficos: uno para la pérdida de entrenamiento y otro
+        para la precisión (limpia y adversarial) a lo largo de las épocas.
+        </remarks>
+        
+        <example>
+        <code>
+        # Graficar el historial de entrenamiento
+        AdversarialUtils.plot_training_history(history)
+        </code>
+        </example>
         """
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
         
@@ -527,18 +685,44 @@ class AdversarialUtils:
     @staticmethod
     def defensive_distillation(teacher_model, student_model, data_loader, device, temperature=10, epochs=5):
         """
+        <summary>
         Implementa la destilación defensiva.
+        </summary>
         
-        Argumentos:
-            teacher_model: Modelo maestro ya entrenado
-            student_model: Modelo estudiante por entrenar
-            data_loader: Cargador de datos
-            device: Dispositivo
-            temperature: Temperatura para suavizar las distribuciones
-            epochs: Número de épocas para entrenar el estudiante
-            
-        Retorna:
-            El modelo estudiante entrenado
+        <param name="teacher_model">Modelo maestro ya entrenado</param>
+        <param name="student_model">Modelo estudiante por entrenar</param>
+        <param name="data_loader">Cargador de datos</param>
+        <param name="device">Dispositivo</param>
+        <param name="temperature">Temperatura para suavizar las distribuciones</param>
+        <param name="epochs">Número de épocas para entrenar el estudiante</param>
+        
+        <returns>
+        torch.nn.Module: El modelo estudiante entrenado
+        </returns>
+        
+        <remarks>
+        La destilación defensiva es una técnica que entrena un segundo modelo (estudiante)
+        para imitar las salidas suavizadas del modelo original (maestro). Esto aumenta
+        la robustez contra ataques adversariales al hacer que el gradiente sea más difícil de explotar.
+        
+        La temperatura controla el grado de suavizado de las distribuciones de probabilidad:
+        - Una temperatura más alta (>1) produce distribuciones más suaves
+        - Una temperatura de 1 produce la distribución original
+        </remarks>
+        
+        <example>
+        <code>
+        # Entrenar un modelo estudiante usando destilación defensiva
+        student_model = AdversarialUtils.defensive_distillation(
+            teacher_model=trained_model,
+            student_model=new_model,
+            data_loader=train_loader,
+            device=device,
+            temperature=10,
+            epochs=5
+        )
+        </code>
+        </example>
         """
         teacher_model.eval()
         student_model.train()
